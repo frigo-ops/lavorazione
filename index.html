@@ -1,192 +1,21 @@
 <!DOCTYPE html>
-<html lang="it">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tracciamento Colli</title>
-
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui;background:#000;color:#fff}
-.container{padding:14px;background:#111;min-height:100vh}
-h1{text-align:center;font-size:22px}
-h2{text-align:center;margin-top:18px}
-label{display:block;margin-top:10px;font-size:14px}
-input{
- width:100%;
- padding:14px;
- margin-top:6px;
- background:#1e1e1e;
- color:#fff;
- border:none;
- border-radius:16px;
- font-size:16px
-}
-button{
- width:100%;
- margin-top:12px;
- padding:14px;
- border-radius:18px;
- border:none;
- font-size:16px;
- font-weight:600;
- cursor:pointer;
- color:#fff;
- background:#0d6efd
-}
-button.baia{background:#6f42c1}
-button.export{background:#198754}
-button.resetBaie{background:#ff9800}
-button.resetColli{background:#dc3545}
-table{width:100%;margin-top:10px;border-collapse:collapse;font-size:13px}
-th,td{border:1px solid #333;padding:8px;text-align:center}
-tr:nth-child(even){background:#151515}
-canvas{margin-top:14px;background:#111;border-radius:14px}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu</title>
+<link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="container">
-<h1>Tracciamento Colli</h1>
+<h1>📦 Seleziona area</h1>
 
-<label>Data lavorazione</label>
-<input type="date" id="dataGiorno">
-
-<h2>Baia</h2>
-<label>Nome / Numero Baia</label>
-<input id="baia">
-<label>Scarti Baia</label>
-<input type="number" id="scartiBaia">
-<button class="baia" onclick="salvaBaia()">Salva Baia</button>
-
-<h2>Colli</h2>
-<label>Colli introdotti</label>
-<input type="number" id="introdotti">
-<label>Colli smistati</label>
-<input type="number" id="smistati">
-<button onclick="salvaColli()">Calcola e Salva Colli</button>
-
-<h2>Grafico Scarti per Baia</h2>
-<label>Filtra per data</label>
-<input type="date" id="filtroData" onchange="aggiornaGrafico()">
-<canvas id="graficoBaie" height="220"></canvas>
-
-<h2>Storico Baie</h2>
-<table>
-<thead><tr><th>Data</th><th>Baia</th><th>Scarti</th></tr></thead>
-<tbody id="storicoBaie"></tbody>
-</table>
-
-<button class="export" onclick="exportBaie()">Esporta Baie in Excel</button>
-<button class="resetBaie" onclick="resetBaie()">Cancella Storico Baie</button>
-
-<h2>Storico Colli</h2>
-<table>
-<thead><tr><th>Data</th><th>Introdotti</th><th>Smistati</th><th>Scarto</th><th>%</th></tr></thead>
-<tbody id="storicoColli"></tbody>
-</table>
-
-<button class="export" onclick="exportColli()">Esporta Colli in Excel</button>
-<button class="resetColli" onclick="resetColli()">Cancella Storico Colli</button>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<button onclick="go('colli.html')">Colli</button>
+<button onclick="go('baia.html')">Baia</button>
+<button onclick="go('fly.html')">FLY</button>
 
 <script>
-let chart;
-
-function salvaBaia(){
- const data=dataGiorno.value;
- const b=baia.value;
- const s=Number(scartiBaia.value);
- if(!data||!b||s<=0)return alert("Compila data, baia e scarti");
-
- const d=JSON.parse(localStorage.getItem("baie"))||[];
- d.push({dataISO:data,data:new Date(data).toLocaleDateString("it-IT"),baia:b,scarti:s});
- localStorage.setItem("baie",JSON.stringify(d));
- baia.value=""; scartiBaia.value="";
- caricaBaie(); aggiornaGrafico();
-}
-
-function salvaColli(){
- const data=dataGiorno.value;
- const i=Number(introdotti.value);
- const s=Number(smistati.value);
- if(!data||i<=0)return alert("Compila data e colli");
- const sc=i-s;
- const p=((sc/i)*100).toFixed(2);
-
- const d=JSON.parse(localStorage.getItem("colli"))||[];
- d.push({data:new Date(data).toLocaleDateString("it-IT"),introdotti:i,smistati:s,scarto:sc,percentuale:p});
- localStorage.setItem("colli",JSON.stringify(d));
- introdotti.value=""; smistati.value="";
- caricaColli();
-}
-
-function caricaBaie(){
- const d=JSON.parse(localStorage.getItem("baie"))||[];
- storicoBaie.innerHTML="";
- d.forEach(r=>storicoBaie.innerHTML+=`<tr><td>${r.data}</td><td>${r.baia}</td><td>${r.scarti}</td></tr>`);
-}
-
-function caricaColli(){
- const d=JSON.parse(localStorage.getItem("colli"))||[];
- storicoColli.innerHTML="";
- d.forEach(r=>storicoColli.innerHTML+=`<tr><td>${r.data}</td><td>${r.introdotti}</td><td>${r.smistati}</td><td>${r.scarto}</td><td>${r.percentuale}%</td></tr>`);
-}
-
-function aggiornaGrafico(){
- const filtro=filtroData.value;
- const dati=JSON.parse(localStorage.getItem("baie"))||[];
- const map={};
- dati.filter(r=>!filtro||r.dataISO===filtro)
-     .forEach(r=>map[r.baia]=(map[r.baia]||0)+r.scarti);
-
- if(chart)chart.destroy();
- chart=new Chart(graficoBaie,{
-  type:"bar",
-  data:{labels:Object.keys(map),datasets:[{data:Object.values(map),backgroundColor:"#6f42c1"}]},
-  options:{plugins:{legend:{display:false}},
-           scales:{x:{ticks:{color:"white"}},y:{ticks:{color:"white"}}}}
- });
-}
-
-function exportBaie(){
- const d=JSON.parse(localStorage.getItem("baie"))||[];
- if(!d.length)return alert("Nessun dato");
- const wb=XLSX.utils.book_new();
- XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d),"Baie");
- XLSX.writeFile(wb,"storico_baie.xlsx");
-}
-
-function exportColli(){
- const d=JSON.parse(localStorage.getItem("colli"))||[];
- if(!d.length)return alert("Nessun dato");
- const wb=XLSX.utils.book_new();
- XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d),"Colli");
- XLSX.writeFile(wb,"storico_colli.xlsx");
-}
-
-function resetBaie(){
- if(confirm("Vuoi cancellare TUTTO lo storico Baie?")){
-  localStorage.removeItem("baie");
-  caricaBaie();
-  aggiornaGrafico();
- }
-}
-
-function resetColli(){
- if(confirm("Vuoi cancellare TUTTO lo storico Colli?")){
-  localStorage.removeItem("colli");
-  caricaColli();
- }
-}
-
-caricaBaie();
-caricaColli();
-aggiornaGrafico();
+function go(p){ window.location.assign(p); }
 </script>
 
 </body>
